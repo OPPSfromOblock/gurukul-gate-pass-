@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HostelPass — Gatepass Management System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <!-- ════════════════════════════════════════════════════
+       🔥 FIREBASE SDK (v9 compat — no bundler needed)
+  ════════════════════════════════════════════════════ -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ════════════════════════════════════════════════════
+    // ⚙️  PASTE YOUR FIREBASE CONFIG HERE
+    //     Firebase Console → Project Settings → Your apps
+    // ════════════════════════════════════════════════════
+    const firebaseConfig = {
+      apiKey:            "AIzaSyANCPMx6Nu6aWDWFAfh3HwH-p8aD3sZA2Y",
+      authDomain:        "gate-pass-gurukul.firebaseapp.com",
+      projectId:         "gate-pass-gurukul",
+      storageBucket:     "gate-pass-gurukul.firebasestorage.app",
+      messagingSenderId: "1081588912559",
+      appId:             "1:1081588912559:web:1e0fd7b112671901155f5a",
+      measurementId:     "G-ZYS35NMPJF"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+
+    // Google provider
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
+  </script>
+
+  <style>
+    :root {
+      --navy: #ffffff;
+      --navy-mid: #fff7f2;
+      --navy-light: #ffe8d6;
+      --gold: #f97316;
+      --gold-light: #fb923c;
+      --gold-glow: rgba(249,115,22,0.15);
+      --cream: #1a1a1a;
+      --white: #ffffff;
+      --text-main: #1a1a1a;
+      --text-muted: #6b7280;
+      --text-soft: #374151;
+      --border: rgba(249,115,22,0.25);
+      --border-focus: rgba(249,115,22,0.65);
+      --error: #e07070;
+      --success: #22c55e;
+      --card-bg: rgba(255,255,255,0.97);
+      --input-bg: rgba(255,247,242,0.9);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(249,115,22,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 80% 90%, rgba(249,115,22,0.04) 0%, transparent 60%),
+        repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(249,115,22,0.03) 60px),
+        repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(249,115,22,0.03) 60px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page { display: none; min-height: 100vh; position: relative; z-index: 1; }
+    .page.active { display: flex; }
+
+    /* ─── HEADER ─── */
+    .site-header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 2rem; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--gold), #ea580c);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .logo-text { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--gold); letter-spacing: 0.5px; }
+    .logo-sub { font-size: 0.65rem; color: var(--text-muted); font-weight: 300; letter-spacing: 2px; text-transform: uppercase; }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .user-chip {
+      display: none; align-items: center; gap: 8px;
+      padding: 6px 14px 6px 8px;
+      background: #fff0e6; border: 1px solid var(--border);
+      border-radius: 100px; font-size: 0.82rem; color: var(--text-soft);
+    }
+    .user-chip .avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), #ea580c);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: var(--navy);
+    }
+    .btn-logout {
+      display: none; background: transparent;
+      border: 1px solid rgba(249,115,22,0.3); color: var(--text-muted);
+      padding: 6px 14px; border-radius: 6px; font-size: 0.8rem;
+      cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+    }
+    .btn-logout:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ─── LOGIN PAGE ─── */
+    #loginPage { align-items: center; justify-content: center; padding-top: 64px; }
+    .login-container { width: 100%; max-width: 420px; padding: 2.5rem; animation: fadeUp 0.6s ease both; }
+    .login-header { text-align: center; margin-bottom: 2.5rem; }
+    .login-header h1 { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--cream); margin-bottom: 0.4rem; }
+    .login-header p { color: var(--text-muted); font-size: 0.9rem; font-weight: 300; }
+    .card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 2rem;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+    .google-btn {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      gap: 10px; padding: 12px;
+      background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 10px; color: var(--text-main);
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500;
+      cursor: pointer; transition: all 0.25s; margin-bottom: 1.5rem;
+    }
+    .google-btn:hover { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.2); transform: translateY(-1px); }
+    .google-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .google-btn svg { flex-shrink: 0; }
+    .divider {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem;
+      color: var(--text-muted); font-size: 0.78rem; letter-spacing: 1px; text-transform: uppercase;
+    }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label {
+      display: block; font-size: 0.78rem; font-weight: 500; color: var(--text-soft);
+      letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 0.5rem;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 12px 14px;
+      background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text-main);
+      font-family: 'DM Sans', sans-serif; font-size: 0.92rem;
+      transition: all 0.25s; outline: none; appearance: none;
+    }
+    .form-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23f97316' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+      padding-right: 36px; cursor: pointer;
+    }
+    .form-group select option { background: #fff7f2; color: var(--text-main); }
+    .form-group textarea { resize: vertical; min-height: 90px; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--border-focus); background: rgba(255,247,242,0.98);
+      box-shadow: 0 0 0 3px var(--gold-glow);
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(138,150,168,0.6); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .btn-primary {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, var(--gold), #ea580c);
+      border: none; border-radius: 10px; color: #ffffff;
+      font-family: 'DM Sans', sans-serif; font-size: 0.92rem; font-weight: 600;
+      cursor: pointer; transition: all 0.25s; position: relative; overflow: hidden;
+    }
+    .btn-primary::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0; transition: opacity 0.25s;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(249,115,22,0.35); }
+    .btn-primary:hover::before { opacity: 1; }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary {
+      padding: 11px 24px; background: transparent;
+      border: 1px solid var(--border); border-radius: 10px; color: var(--text-soft);
+      font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+    .form-footer { text-align: center; margin-top: 1.25rem; font-size: 0.82rem; color: var(--text-muted); }
+    .form-footer a { color: var(--gold); text-decoration: none; cursor: pointer; }
+    .form-footer a:hover { text-decoration: underline; }
+    .error-msg {
+      background: rgba(224,112,112,0.1); border: 1px solid rgba(224,112,112,0.3);
+      border-radius: 8px; padding: 10px 14px; font-size: 0.83rem; color: var(--error);
+      margin-bottom: 1rem; display: none;
+    }
+
+    /* ─── APP PAGE ─── */
+    #appPage { flex-direction: column; padding-top: 64px; }
+    .app-content { flex: 1; padding: 2.5rem 1.5rem; max-width: 780px; margin: 0 auto; width: 100%; }
+    .progress-bar { display: flex; align-items: center; margin-bottom: 2.5rem; gap: 0; }
+    .step { display: flex; align-items: center; flex: 1; }
+    .step-bubble {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 2px solid var(--border); background: #f3f4f6;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 600; font-family: 'DM Mono', monospace;
+      color: var(--text-muted); transition: all 0.4s; flex-shrink: 0; position: relative; z-index: 2;
+    }
+    .step.active .step-bubble { border-color: var(--gold); background: linear-gradient(135deg, var(--gold), #ea580c); color: var(--white); box-shadow: 0 0 0 4px var(--gold-glow); }
+    .step.done .step-bubble { border-color: var(--success); background: rgba(109,187,138,0.15); color: var(--success); }
+    .step-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-left: 8px; white-space: nowrap; transition: color 0.3s; }
+    .step.active .step-label { color: var(--gold); }
+    .step.done .step-label { color: var(--success); }
+    .step-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; transition: background 0.4s; }
+    .step-line.done { background: var(--success); }
+    .section-title { margin-bottom: 1.75rem; }
+    .section-title h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--cream); margin-bottom: 0.3rem; }
+    .section-title p { color: var(--text-muted); font-size: 0.88rem; font-weight: 300; }
+    .form-step { display: none; animation: fadeUp 0.4s ease both; }
+    .form-step.active { display: block; }
+    .pass-type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .pass-type-card {
+      padding: 1.2rem; background: var(--input-bg);
+      border: 2px solid var(--border); border-radius: 12px;
+      cursor: pointer; transition: all 0.25s; text-align: center;
+    }
+    .pass-type-card:hover { border-color: rgba(200,169,110,0.45); }
+    .pass-type-card.selected { border-color: var(--gold); background: rgba(249,115,22,0.06); box-shadow: 0 0 0 3px var(--gold-glow); }
+    .pass-type-card .icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
+    .pass-type-card .type-name { font-size: 0.88rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.2rem; }
+    .pass-type-card .type-desc { font-size: 0.75rem; color: var(--text-muted); font-weight: 300; }
+    .time-section { background: rgba(249,115,22,0.04); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .time-section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); font-weight: 600; margin-bottom: 1rem; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .summary-item { padding: 0.9rem 1rem; background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; }
+    .summary-item .s-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 0.35rem; }
+    .summary-item .s-value { font-size: 0.92rem; font-weight: 500; color: var(--text-main); font-family: 'DM Mono', monospace; }
+    .summary-item.full { grid-column: span 2; }
+    .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+
+    /* ─── SUCCESS PAGE ─── */
+    #successPage { align-items: center; justify-content: center; padding-top: 64px; }
+    .success-container { max-width: 480px; width: 100%; padding: 2rem; text-align: center; animation: fadeUp 0.6s ease both; }
+    .success-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(109,187,138,0.12); border: 2px solid var(--success); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem; box-shadow: 0 0 30px rgba(34,197,94,0.15); }
+    .pass-id { font-family: 'DM Mono', monospace; font-size: 1.1rem; color: var(--gold); background: rgba(249,115,22,0.08); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1.2rem; display: inline-block; margin: 1rem 0 1.5rem; }
+    .success-details { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; text-align: left; margin-bottom: 1.5rem; backdrop-filter: blur(12px); }
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid rgba(249,115,22,0.08); font-size: 0.88rem; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .dk { color: var(--text-muted); font-weight: 300; }
+    .detail-row .dv { color: var(--text-main); font-weight: 500; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 100px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.5px; }
+    .badge-pending { background: rgba(249,115,22,0.12); color: var(--gold); border: 1px solid rgba(249,115,22,0.3); }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--gold-glow); } 50% { box-shadow: 0 0 0 8px transparent; } }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 580px) {
+      .form-row { grid-template-columns: 1fr; }
+      .pass-type-grid { grid-template-columns: 1fr 1fr; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .summary-item.full { grid-column: span 1; }
+      .step-label { display: none; }
+      .app-content { padding: 1.75rem 1rem; }
+    }
+
+    /* ─── ROLE BADGE ─── */
+    .role-badge { display: none; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 100px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.5px; cursor: default; }
+    .role-badge.student { background: rgba(249,115,22,0.1); color: var(--gold); border: 1px solid rgba(249,115,22,0.3); }
+    .role-badge.warden { background: rgba(99,102,241,0.1); color: #6366f1; border: 1px solid rgba(99,102,241,0.3); }
+    .role-badge.superadmin { background: rgba(139,92,246,0.12); color: #7c3aed; border: 1px solid rgba(139,92,246,0.35); }
+    .btn-upgrade { display: none; background: linear-gradient(135deg, #6366f1, #4f46e5); border: none; color: #fff; padding: 6px 13px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-upgrade:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-switch-view { display: none; background: transparent; border: 1px solid rgba(99,102,241,0.4); color: #6366f1; padding: 6px 13px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-switch-view:hover { border-color: #6366f1; background: rgba(99,102,241,0.06); }
+
+    /* ─── WARDEN PAGE ─── */
+    #wardenPage { flex-direction: column; padding-top: 64px; background: #fafafa; }
+    .warden-content { flex: 1; padding: 2rem 2rem 3rem; max-width: 1100px; margin: 0 auto; width: 100%; }
+    .warden-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+    .warden-topbar h2 { font-family: 'Playfair Display', serif; font-size: 1.7rem; color: #1a1a1a; }
+    .warden-topbar p { color: var(--text-muted); font-size: 0.88rem; margin-top: 2px; }
+    .warden-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: #fff; border: 1px solid rgba(249,115,22,0.15); border-radius: 14px; padding: 1.2rem 1.4rem; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+    .stat-card .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; margin-bottom: 0.5rem; }
+    .stat-card .stat-val { font-family: 'DM Mono', monospace; font-size: 2rem; font-weight: 500; color: #1a1a1a; line-height: 1; }
+    .stat-card .stat-val.orange { color: var(--gold); }
+    .stat-card .stat-val.green { color: #22c55e; }
+    .stat-card .stat-val.red { color: #ef4444; }
+    .warden-table-wrap { background: #fff; border: 1px solid rgba(249,115,22,0.15); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+    .warden-table-header { padding: 1.2rem 1.5rem; border-bottom: 1px solid rgba(249,115,22,0.1); display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .warden-table-header h3 { font-size: 0.95rem; font-weight: 600; color: #1a1a1a; }
+    .warden-filter-tabs { display: flex; gap: 4px; background: #f3f4f6; border-radius: 8px; padding: 3px; }
+    .warden-filter-tab { padding: 5px 14px; border: none; background: transparent; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text-muted); transition: all 0.2s; }
+    .warden-filter-tab.active { background: #fff; color: var(--gold); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .warden-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+    .warden-table thead th { padding: 12px 16px; text-align: left; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); background: #fff9f6; border-bottom: 1px solid rgba(249,115,22,0.12); }
+    .warden-table tbody tr { border-bottom: 1px solid rgba(0,0,0,0.05); transition: background 0.15s; }
+    .warden-table tbody tr:last-child { border-bottom: none; }
+    .warden-table tbody tr:hover { background: #fff9f6; }
+    .warden-table td { padding: 13px 16px; color: #1a1a1a; vertical-align: middle; }
+    .warden-table .td-name { font-weight: 600; }
+    .warden-table .td-mid { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--text-muted); }
+    .warden-table .td-time { font-size: 0.8rem; color: var(--text-muted); }
+    .pass-type-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; }
+    .pass-type-pill.gatepass { background: rgba(249,115,22,0.1); color: var(--gold); border: 1px solid rgba(249,115,22,0.25); }
+    .pass-type-pill.outpass { background: rgba(99,102,241,0.1); color: #6366f1; border: 1px solid rgba(99,102,241,0.25); }
+    .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 100px; font-size: 0.73rem; font-weight: 600; letter-spacing: 0.3px; }
+    .status-pill.pending { background: rgba(249,115,22,0.1); color: var(--gold); border: 1px solid rgba(249,115,22,0.3); }
+    .status-pill.approved { background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+    .status-pill.rejected { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .action-btns { display: flex; gap: 6px; }
+    .btn-approve { padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(34,197,94,0.4); background: rgba(34,197,94,0.06); color: #16a34a; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-approve:hover { background: rgba(34,197,94,0.15); }
+    .btn-reject { padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.4); background: rgba(239,68,68,0.06); color: #dc2626; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-reject:hover { background: rgba(239,68,68,0.15); }
+    .warden-empty { text-align: center; padding: 3.5rem 2rem; color: var(--text-muted); }
+    .warden-empty .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .warden-empty p { font-size: 0.9rem; }
+    @media (max-width: 700px) {
+      .warden-stats { grid-template-columns: repeat(2,1fr); }
+      .warden-table thead th:nth-child(4), .warden-table td:nth-child(4) { display: none; }
+    }
+
+    /* ─── SUPER ADMIN PAGE ─── */
+    #superAdminPage { flex-direction: column; padding-top: 64px; background: #f8f7ff; }
+    .sa-content { flex: 1; padding: 2rem 2rem 3rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .sa-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+    .sa-topbar h2 { font-family: 'Playfair Display', serif; font-size: 1.7rem; color: #1a1a1a; }
+    .sa-topbar p { color: var(--text-muted); font-size: 0.88rem; margin-top: 2px; }
+    .sa-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; letter-spacing: 0.5px; }
+    .sa-stats { display: grid; grid-template-columns: repeat(5,1fr); gap: 1rem; margin-bottom: 2rem; }
+    .sa-stat-card { background: #fff; border: 1px solid rgba(124,58,237,0.15); border-radius: 14px; padding: 1.2rem 1.4rem; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+    .sa-stat-card .stat-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:600; margin-bottom:0.5rem; }
+    .sa-stat-card .stat-val { font-family:'DM Mono',monospace; font-size:2rem; font-weight:500; color:#1a1a1a; line-height:1; }
+    .sa-stat-card .stat-val.purple { color: #7c3aed; }
+    .sa-tabs { display:flex; gap:8px; margin-bottom:1.5rem; flex-wrap:wrap; }
+    .sa-tab { padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(124,58,237,0.2); background: #fff; color: #6b7280; font-family:'DM Sans',sans-serif; font-size:0.83rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .sa-tab.active { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; border-color:transparent; }
+    .sa-table-wrap { background:#fff; border:1px solid rgba(124,58,237,0.2); border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.06); }
+    .sa-table-header { padding:1.2rem 1.5rem; border-bottom:1px solid rgba(124,58,237,0.12); display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .sa-table-header h3 { font-size:0.95rem; font-weight:600; color:#1a1a1a; }
+    .sa-table { width:100%; border-collapse:collapse; font-size:0.87rem; }
+    .sa-table thead th { padding:12px 16px; text-align:left; font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); background:#faf9ff; border-bottom:1px solid rgba(124,58,237,0.1); }
+    .sa-table tbody tr { border-bottom:1px solid rgba(0,0,0,0.04); transition:background 0.15s; }
+    .sa-table tbody tr:last-child { border-bottom:none; }
+    .sa-table tbody tr:hover { background:#faf9ff; }
+    .sa-table td { padding:13px 16px; color:#1a1a1a; vertical-align:middle; }
+    .btn-override { padding:5px 12px; border-radius:6px; border:1px solid rgba(124,58,237,0.35); background:rgba(124,58,237,0.06); color:#7c3aed; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
+    .btn-override:hover { background:rgba(124,58,237,0.15); }
+    @media (max-width:700px) { .sa-stats { grid-template-columns:repeat(2,1fr); } }
+
+    /* ─── MISC ─── */
+    .field-hint { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; font-style: italic; }
+    .required-mark { color: var(--gold); margin-left: 2px; }
+    .input-icon-wrap { position: relative; }
+    .input-icon-wrap .icon-left { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.9rem; pointer-events: none; }
+    .input-icon-wrap input { padding-left: 36px; }
+    .auth-tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.04); border: 1px solid var(--border); border-radius: 10px; padding: 4px; margin-bottom: 1.5rem; }
+    .auth-tab { flex: 1; padding: 8px; border: none; background: transparent; border-radius: 7px; color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.25s; }
+    .auth-tab.active { background: linear-gradient(135deg, var(--gold), #ea580c); color: #ffffff; }
+    .forgot-link { display: block; text-align: right; font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; cursor: pointer; transition: color 0.2s; }
+    .forgot-link:hover { color: var(--gold); }
+    .loading-overlay { position: fixed; inset: 0; background: #fff7f2; display: flex; align-items: center; justify-content: center; z-index: 999; transition: opacity 0.5s, visibility 0.5s; }
+    .loading-overlay.hidden { opacity: 0; visibility: hidden; }
+    .loader-logo { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); animation: pulse 1.5s infinite; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: center; justify-content: center; }
+    .modal-box { background: #fff; border-radius: 16px; padding: 2rem; max-width: 380px; width: 90%; box-shadow: 0 24px 60px rgba(0,0,0,0.2); animation: fadeUp 0.3s ease both; }
+    .modal-box h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #1a1a1a; margin-bottom: 0.4rem; }
+    .modal-box p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
+    .modal-error { font-size: 0.8rem; color: var(--error); margin-top: 0.5rem; display: none; }
+    .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loader-logo">⬡ HostelPass</div>
+</div>
+
+<!-- Site Header -->
+<header class="site-header">
+  <div class="logo">
+    <div class="logo-icon">⬡</div>
+    <div>
+      <div class="logo-text">HostelPass</div>
+      <div class="logo-sub">Gatepass System</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="role-badge" id="roleBadge"></span>
+    <button class="btn-upgrade"      id="upgradeBtn"    onclick="upgradeToWarden()">⬆ Upgrade to Warden</button>
+    <button class="btn-switch-view"  id="switchViewBtn" onclick="switchView()">⇄ Switch View</button>
+    <div class="user-chip" id="userChip">
+      <div class="avatar" id="userAvatar">A</div>
+      <span id="userNameDisplay">Admin</span>
+    </div>
+    <button class="btn-logout" id="logoutBtn" onclick="logout()">Sign Out</button>
+  </div>
+</header>
+
+<!-- ════════════ LOGIN PAGE ════════════ -->
+<div class="page active" id="loginPage">
+  <div class="login-container">
+    <div class="login-header">
+      <h1>Welcome Back</h1>
+      <p>Sign in to access the gatepass management portal</p>
+    </div>
+    <div class="card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login', this)">Sign In</button>
+        <button class="auth-tab"        onclick="switchTab('signup', this)">Register</button>
+      </div>
+      <div id="errorMsg" class="error-msg"></div>
+
+      <!-- Google -->
+      <button class="google-btn" id="googleBtn" onclick="googleLogin()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="divider">or</div>
+
+      <!-- Login form -->
+      <div id="loginForm">
+        <div class="form-group">
+          <label>Email Address <span class="required-mark">*</span></label>
+          <div class="input-icon-wrap">
+            <span class="icon-left">✉</span>
+            <input type="email" id="loginEmail" placeholder="you@college.edu" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password <span class="required-mark">*</span></label>
+          <input type="password" id="loginPassword" placeholder="••••••••" />
+          <span class="forgot-link" onclick="forgotPassword()">Forgot password?</span>
+        </div>
+        <button class="btn-primary" id="loginBtn" onclick="login()">Sign In to Portal</button>
+      </div>
+
+      <!-- Signup form -->
+      <div id="signupForm" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label>First Name <span class="required-mark">*</span></label>
+            <input type="text" id="signupFirst" placeholder="Arjun" />
+          </div>
+          <div class="form-group">
+            <label>Last Name <span class="required-mark">*</span></label>
+            <input type="text" id="signupLast" placeholder="Sharma" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>College Email <span class="required-mark">*</span></label>
+          <input type="email" id="signupEmail" placeholder="you@college.edu" />
+        </div>
+        <div class="form-group">
+          <label>Password <span class="required-mark">*</span></label>
+          <input type="password" id="signupPassword" placeholder="Min. 8 characters" />
+        </div>
+        <button class="btn-primary" id="signupBtn" onclick="signup()">Create Account</button>
+      </div>
+
+      <div class="form-footer" id="loginFooter">New here? <a onclick="switchTabByName('signup')">Create an account →</a></div>
+      <div class="form-footer" id="signupFooter" style="display:none;">Already have an account? <a onclick="switchTabByName('login')">Sign in →</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ APP PAGE (Multi-step form) ════════════ -->
+<div class="page" id="appPage">
+  <div class="app-content">
+
+    <div class="progress-bar" id="progressBar">
+      <div class="step active" id="s1"><div class="step-bubble">1</div><span class="step-label">Student Info</span></div>
+      <div class="step-line" id="l1"></div>
+      <div class="step" id="s2"><div class="step-bubble">2</div><span class="step-label">Pass Details</span></div>
+      <div class="step-line" id="l2"></div>
+      <div class="step" id="s3"><div class="step-bubble">3</div><span class="step-label">Review</span></div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="form-step active" id="step1">
+      <div class="section-title">
+        <h2>Student Information</h2>
+        <p>Enter the student's details to proceed with the gatepass request</p>
+      </div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group">
+            <label>MID / Roll Number <span class="required-mark">*</span></label>
+            <input type="text" id="mid" placeholder="e.g. MID2024001" style="font-family:'DM Mono',monospace;letter-spacing:1px;" />
+            <div class="field-hint">Unique student identifier</div>
+          </div>
+          <div class="form-group">
+            <label>Student Name <span class="required-mark">*</span></label>
+            <input type="text" id="studentName" placeholder="Full name" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Room Number <span class="required-mark">*</span></label>
+            <input type="text" id="roomNumber" placeholder="e.g. A-204" />
+          </div>
+          <div class="form-group">
+            <label>Class / Section <span class="required-mark">*</span></label>
+            <select id="classSection">
+              <option value="">Select section</option>
+              <optgroup label="1st Year">
+                <option>CSE - A</option><option>CSE - B</option><option>CSE - C</option>
+                <option>ECE - A</option><option>ECE - B</option>
+                <option>ME - A</option><option>ME - B</option><option>Civil - A</option>
+              </optgroup>
+              <optgroup label="2nd Year">
+                <option>CSE - A (2nd)</option><option>CSE - B (2nd)</option>
+                <option>ECE - A (2nd)</option><option>ME - A (2nd)</option>
+              </optgroup>
+              <optgroup label="3rd Year">
+                <option>CSE - A (3rd)</option><option>CSE - B (3rd)</option>
+                <option>ECE - A (3rd)</option><option>ME - A (3rd)</option>
+              </optgroup>
+              <optgroup label="4th Year">
+                <option>CSE - A (4th)</option><option>CSE - B (4th)</option>
+                <option>ECE - A (4th)</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Parent / Guardian Contact</label>
+          <input type="tel" id="parentContact" placeholder="+91 XXXXX XXXXX" />
+          <div class="field-hint">Optional — for emergency contact</div>
+        </div>
+        <div class="step-nav" style="border-top:none;padding-top:0;margin-top:0.5rem;">
+          <div></div>
+          <button class="btn-primary" style="width:auto;padding:12px 32px;" onclick="goToStep(2)">Continue →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="form-step" id="step2">
+      <div class="section-title">
+        <h2>Pass Details</h2>
+        <p>Choose pass type and provide required information</p>
+      </div>
+      <div class="card">
+        <div class="pass-type-grid">
+          <div class="pass-type-card" onclick="selectPassType(this,'gatepass')">
+            <div class="icon">🏠</div>
+            <div class="type-name">Gatepass</div>
+            <div class="type-desc">Parent/guardian pickup — leave hostel premises</div>
+          </div>
+          <div class="pass-type-card" onclick="selectPassType(this,'outpass')">
+            <div class="icon">⏰</div>
+            <div class="type-name">Outpass</div>
+            <div class="type-desc">Short-duration exit — return same day</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Reason Category <span class="required-mark">*</span></label>
+          <select id="reasonCategory">
+            <option value="">Select reason</option>
+            <option>Medical / Health</option>
+            <option>Family Emergency</option>
+            <option>Personal Work</option>
+            <option>Academic Purpose</option>
+            <option>Shopping / Groceries</option>
+            <option>Religious / Festival</option>
+            <option>Sports / Event</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <!-- Gatepass fields -->
+        <div id="gatepassSection" style="display:none;">
+          <div class="time-section">
+            <div class="time-section-label">🏠 Gatepass Timing</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Departure Date & Time <span class="required-mark">*</span></label>
+                <input type="datetime-local" id="pickupTime" />
+              </div>
+              <div class="form-group">
+                <label>Return Date & Time <span class="required-mark">*</span></label>
+                <input type="datetime-local" id="returnTime" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Picked Up By <span class="required-mark">*</span></label>
+              <input type="text" id="pickupPerson" placeholder="Parent/guardian full name" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Outpass fields -->
+        <div id="outpassSection" style="display:none;">
+          <div class="time-section">
+            <div class="time-section-label">⏰ Outpass Timing</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Out Time <span class="required-mark">*</span></label>
+                <input type="time" id="outTime" />
+              </div>
+              <div class="form-group">
+                <label>Return Time <span class="required-mark">*</span></label>
+                <input type="time" id="outReturnTime" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Destination <span class="required-mark">*</span></label>
+              <input type="text" id="outDestination" placeholder="e.g. City market, Hospital" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Additional Details</label>
+          <textarea id="reasonDetail" placeholder="Any additional information for the warden…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Warden Remarks</label>
+          <textarea id="wardenRemarks" placeholder="Leave blank — warden fills this in"></textarea>
+        </div>
+
+        <div class="step-nav">
+          <button class="btn-secondary" onclick="goToStep(1)">← Back</button>
+          <button class="btn-primary" style="width:auto;padding:12px 32px;" onclick="goToStep(3)">Review →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 — Review -->
+    <div class="form-step" id="step3">
+      <div class="section-title">
+        <h2>Review & Submit</h2>
+        <p>Confirm all details before submitting your request</p>
+      </div>
+      <div class="card">
+        <div style="font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:0.75rem;">Student Details</div>
+        <div class="summary-grid" id="summaryStudent"></div>
+        <div style="font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:1rem 0 0.75rem;">Pass Details</div>
+        <div class="summary-grid" id="summaryPass"></div>
+        <label style="display:flex;align-items:flex-start;gap:10px;font-size:0.84rem;color:var(--text-soft);cursor:pointer;margin-bottom:1.5rem;">
+          <input type="checkbox" id="confirmCheck" style="margin-top:3px;width:auto;accent-color:var(--gold);" />
+          I confirm that all the above information is accurate and I understand that submitting a false gatepass request may result in disciplinary action.
+        </label>
+        <div class="step-nav" style="border-top:none;padding-top:0;margin-top:0;">
+          <button class="btn-secondary" onclick="goToStep(2)">← Back</button>
+          <button class="btn-primary" id="submitBtn" style="width:auto;padding:12px 32px;" onclick="submitPass()">Submit Request 🚀</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════ SUCCESS PAGE ════════════ -->
+<div class="page" id="successPage">
+  <div class="success-container">
+    <div class="success-icon">✅</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.6rem;color:#1a1a1a;">Request Submitted!</h2>
+    <p style="color:var(--text-muted);font-size:0.9rem;margin-top:0.5rem;">Your gatepass request has been sent to the warden for approval.</p>
+    <div class="pass-id" id="passIdDisplay">GP-2024-XXXXX</div>
+    <div class="success-details">
+      <div id="successDetails"></div>
+    </div>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <button class="btn-secondary" onclick="printPass()">🖨 Print</button>
+      <button class="btn-primary" style="width:auto;padding:12px 28px;" onclick="newRequest()">+ New Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ WARDEN PAGE ════════════ -->
+<div class="page" id="wardenPage">
+  <div class="warden-content">
+    <div class="warden-topbar">
+      <div>
+        <h2>🛡 Warden Dashboard</h2>
+        <p id="wardenSubtitle">Manage all student gatepass requests</p>
+      </div>
+    </div>
+    <div class="warden-stats">
+      <div class="stat-card"><div class="stat-label">Total</div><div class="stat-val" id="statTotal">0</div></div>
+      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-val orange" id="statPending">0</div></div>
+      <div class="stat-card"><div class="stat-label">Approved</div><div class="stat-val green" id="statApproved">0</div></div>
+      <div class="stat-card"><div class="stat-label">Rejected</div><div class="stat-val red" id="statRejected">0</div></div>
+    </div>
+    <div class="warden-table-wrap">
+      <div class="warden-table-header">
+        <h3>All Requests <span id="liveIndicator" style="font-size:0.7rem;color:#22c55e;margin-left:8px;">● Live</span></h3>
+        <div class="warden-filter-tabs">
+          <button class="warden-filter-tab active" onclick="filterTable('all',this)">All</button>
+          <button class="warden-filter-tab" onclick="filterTable('pending',this)">Pending</button>
+          <button class="warden-filter-tab" onclick="filterTable('approved',this)">Approved</button>
+          <button class="warden-filter-tab" onclick="filterTable('rejected',this)">Rejected</button>
+        </div>
+      </div>
+      <div id="wardenTableContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ SUPER ADMIN PAGE ════════════ -->
+<div class="page" id="superAdminPage">
+  <div class="sa-content">
+    <div class="sa-topbar">
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.4rem;">
+          <h2>Super Admin</h2>
+          <span class="sa-badge">👑 Full Access</span>
+        </div>
+        <p>Override and manage all requests across all wardens</p>
+      </div>
+      <button onclick="clearAllRequests()" style="padding:8px 18px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.06);color:#dc2626;font-family:'DM Sans',sans-serif;font-size:0.83rem;font-weight:600;cursor:pointer;">🗑 Clear All</button>
+    </div>
+    <div class="sa-stats">
+      <div class="sa-stat-card"><div class="stat-label">Total</div><div class="stat-val" id="saTotal">0</div></div>
+      <div class="sa-stat-card"><div class="stat-label">Gatepasses</div><div class="stat-val purple" id="saGatepasses">0</div></div>
+      <div class="sa-stat-card"><div class="stat-label">Outpasses</div><div class="stat-val purple" id="saOutpasses">0</div></div>
+      <div class="sa-stat-card"><div class="stat-label">Approved</div><div class="stat-val" style="color:#22c55e" id="saApproved">0</div></div>
+      <div class="sa-stat-card"><div class="stat-label">Pending</div><div class="stat-val" style="color:#f97316" id="saPending">0</div></div>
+    </div>
+    <div class="sa-tabs">
+      <button class="sa-tab active" onclick="filterSATable('all',this)">All</button>
+      <button class="sa-tab" onclick="filterSATable('gatepass',this)">Gatepasses</button>
+      <button class="sa-tab" onclick="filterSATable('outpass',this)">Outpasses</button>
+      <button class="sa-tab" onclick="filterSATable('pending',this)">Pending</button>
+      <button class="sa-tab" onclick="filterSATable('approved',this)">Approved</button>
+      <button class="sa-tab" onclick="filterSATable('rejected',this)">Rejected</button>
+    </div>
+    <div class="sa-table-wrap">
+      <div class="sa-table-header">
+        <h3>All Requests <span style="font-size:0.7rem;color:#22c55e;margin-left:8px;">● Live</span></h3>
+      </div>
+      <div id="saTableContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ WARDEN UPGRADE MODAL ════════════ -->
+<div class="modal-overlay" id="wardenModal">
+  <div class="modal-box">
+    <h3>🛡 Warden Access</h3>
+    <p>Enter the warden password to unlock dashboard access.</p>
+    <div class="form-group">
+      <input type="password" id="wardenPasswordInput" placeholder="Warden password" onkeydown="if(event.key==='Enter')confirmWardenPassword()" />
+      <div class="modal-error" id="wardenModalError">Incorrect password. Please try again.</div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeWardenModal()" style="flex:1;padding:11px;border-radius:10px;border:1px solid rgba(249,115,22,0.25);background:transparent;color:#6b7280;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;">Cancel</button>
+      <button onclick="confirmWardenPassword()" style="flex:1;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;">Unlock 🛡</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ SUPER ADMIN MODAL ════════════ -->
+<div class="modal-overlay" id="superAdminModal">
+  <div class="modal-box">
+    <h3>👑 Super Admin Access</h3>
+    <p>This area is restricted. Enter the super admin password to continue.</p>
+    <div class="form-group">
+      <input type="password" id="superAdminPasswordInput" placeholder="Super admin password" onkeydown="if(event.key==='Enter')confirmSuperAdminPassword()" />
+      <div class="modal-error" id="saModalError">Incorrect password. Please try again.</div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeSuperAdminModal()" style="flex:1;padding:11px;border-radius:10px;border:1px solid rgba(124,58,237,0.25);background:transparent;color:#6b7280;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;">Cancel</button>
+      <button onclick="confirmSuperAdminPassword()" style="flex:1;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;">Unlock 👑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     🔥  APPLICATION LOGIC  (Firebase-powered)
+════════════════════════════════════════════════════ -->
+<script>
+// ── Passwords (stored only in JS, not Firestore)
+// Change these before deploying!
+const WARDEN_PASSWORD    = 'mithunisboujee';
+const SUPER_ADMIN_PASSWORD = 'researchinnovationsithebestcommitee';
+
+// ── Runtime state ──
+let currentUser    = null;   // Firebase user + role
+let selectedPassType = '';
+let currentStep    = 1;
+let currentFilter  = 'all';
+let saFilter       = 'all';
+let unsubRequests  = null;   // Firestore listener cleanup
+let cachedRequests = [];     // Local mirror of Firestore data
+
+// ── Super admin keyboard shortcut ("awesome") ──
+let keyBuffer = '';
+document.addEventListener('keydown', (e) => {
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  keyBuffer += e.key.toLowerCase();
+  if (keyBuffer.length > 7) keyBuffer = keyBuffer.slice(-7);
+  if (keyBuffer === 'awesome') { keyBuffer = ''; openSuperAdminModal(); }
+});
+
+// ════════════════════════════════════════════════════
+// 🔥 FIREBASE AUTH — persistent session
+// ════════════════════════════════════════════════════
+auth.onAuthStateChanged(async (firebaseUser) => {
+  if (firebaseUser) {
+    // User is signed in — load their role from Firestore
+    const role = await getUserRole(firebaseUser.uid);
+    currentUser = {
+      uid:    firebaseUser.uid,
+      name:   firebaseUser.displayName || firebaseUser.email.split('@')[0],
+      email:  firebaseUser.email,
+      avatar: (firebaseUser.displayName || firebaseUser.email)[0].toUpperCase(),
+      role
+    };
+    hideLoadingOverlay();
+    enterApp();
+  } else {
+    // No session — show login
+    currentUser = null;
+    stopRequestsListener();
+    hideLoadingOverlay();
+    showPage('loginPage');
+  }
+});
+
+function hideLoadingOverlay() {
+  setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 600);
+}
+
+// ── Get role from Firestore users collection ──
+async function getUserRole(uid) {
+  try {
+    const snap = await db.collection('users').doc(uid).get();
+    if (snap.exists) return snap.data().role || 'student';
+    return 'student';
+  } catch { return 'student'; }
+}
+
+// ── Persist role to Firestore ──
+async function setUserRole(uid, role) {
+  await db.collection('users').doc(uid).set({ role }, { merge: true });
+}
+
+// ── Create user profile on first sign-in ──
+async function ensureUserProfile(firebaseUser, displayName) {
+  const ref = db.collection('users').doc(firebaseUser.uid);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    await ref.set({
+      name:      displayName || firebaseUser.email.split('@')[0],
+      email:     firebaseUser.email,
+      role:      'student',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════
+// 🔐 LOGIN FUNCTIONS
+// ════════════════════════════════════════════════════
+function setAuthBusy(busy) {
+  ['loginBtn','signupBtn','googleBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = busy;
+  });
+}
+
+async function login() {
+  clearError();
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  if (!email || !pass) { showError('Please enter both email and password.'); return; }
+  setAuthBusy(true);
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    // onAuthStateChanged handles the rest
+  } catch (err) {
+    showError(friendlyAuthError(err.code));
+    setAuthBusy(false);
+  }
+}
+
+async function signup() {
+  clearError();
+  const first = document.getElementById('signupFirst').value.trim();
+  const last  = document.getElementById('signupLast').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass  = document.getElementById('signupPassword').value;
+  if (!first || !last || !email || !pass) { showError('All fields are required.'); return; }
+  if (pass.length < 8) { showError('Password must be at least 8 characters.'); return; }
+  setAuthBusy(true);
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.updateProfile({ displayName: `${first} ${last}` });
+    await ensureUserProfile(cred.user, `${first} ${last}`);
+    // onAuthStateChanged handles the rest
+  } catch (err) {
+    showError(friendlyAuthError(err.code));
+    setAuthBusy(false);
+  }
+}
+
+async function googleLogin() {
+  clearError();
+  setAuthBusy(true);
+  try {
+    const result = await auth.signInWithPopup(googleProvider);
+    await ensureUserProfile(result.user, result.user.displayName);
+    // onAuthStateChanged handles the rest
+  } catch (err) {
+    showError(friendlyAuthError(err.code));
+    setAuthBusy(false);
+  }
+}
+
+async function forgotPassword() {
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email) { showError('Enter your email address first, then click Forgot password.'); return; }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    showToast(`✉ Reset link sent to ${email}`, 'success');
+  } catch (err) {
+    showError(friendlyAuthError(err.code));
+  }
+}
+
+async function logout() {
+  stopRequestsListener();
+  await auth.signOut();
+  // onAuthStateChanged will redirect to login
+  document.getElementById('userChip').style.display     = 'none';
+  document.getElementById('logoutBtn').style.display    = 'none';
+  document.getElementById('roleBadge').style.display    = 'none';
+  document.getElementById('upgradeBtn').style.display   = 'none';
+  document.getElementById('switchViewBtn').style.display = 'none';
+  selectedPassType = '';
+  currentStep = 1;
+}
+
+function friendlyAuthError(code) {
+  const map = {
+    'auth/user-not-found':       'No account found with this email.',
+    'auth/wrong-password':       'Incorrect password.',
+    'auth/email-already-in-use': 'An account with this email already exists.',
+    'auth/weak-password':        'Password is too weak. Use at least 8 characters.',
+    'auth/invalid-email':        'Invalid email address.',
+    'auth/too-many-requests':    'Too many attempts. Please try again later.',
+    'auth/popup-closed-by-user': 'Sign-in popup was closed.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+  };
+  return map[code] || 'Authentication error. Please try again.';
+}
+
+// ════════════════════════════════════════════════════
+// 🚀 APP ENTRY
+// ════════════════════════════════════════════════════
+function enterApp() {
+  const el = document.getElementById('userChip');
+  el.style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'block';
+  document.getElementById('userAvatar').textContent   = currentUser.avatar;
+  document.getElementById('userNameDisplay').textContent = currentUser.name;
+
+  const badge = document.getElementById('roleBadge');
+  badge.style.display = 'flex';
+  badge.className = `role-badge ${currentUser.role}`;
+  badge.textContent = currentUser.role === 'superadmin' ? '👑 Super Admin'
+                    : currentUser.role === 'warden'     ? '🛡 Warden'
+                    : '🎓 Student';
+
+  document.getElementById('upgradeBtn').style.display    = currentUser.role === 'student'    ? 'block' : 'none';
+  document.getElementById('switchViewBtn').style.display = currentUser.role === 'warden'     ? 'block' : 'none';
+
+  if (currentUser.role === 'superadmin') {
+    showPage('superAdminPage');
+    startRequestsListener(() => renderSuperAdminDashboard());
+  } else if (currentUser.role === 'warden') {
+    showPage('wardenPage');
+    startRequestsListener(() => renderWardenDashboard());
+  } else {
+    showPage('appPage');
+    goToStep(1, true);
+  }
+}
+
+// ════════════════════════════════════════════════════
+// 🔥 FIRESTORE — real-time listener for requests
+// ════════════════════════════════════════════════════
+function startRequestsListener(onUpdate) {
+  stopRequestsListener();
+  unsubRequests = db.collection('requests')
+    .onSnapshot({ includeMetadataChanges: false }, snapshot => {
+      cachedRequests = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.submittedAt && a.submittedAt.toMillis ? a.submittedAt.toMillis() : 0;
+          const tb = b.submittedAt && b.submittedAt.toMillis ? b.submittedAt.toMillis() : 0;
+          return tb - ta;
+        });
+      onUpdate();
+    }, err => {
+      console.error('Firestore listener error:', err);
+      showToast('⚠️ Lost connection to database.', 'error');
+    });
+}
+
+function stopRequestsListener() {
+  if (unsubRequests) { unsubRequests(); unsubRequests = null; }
+}
+
+// ════════════════════════════════════════════════════
+// 📝 SUBMIT PASS — writes to Firestore
+// ════════════════════════════════════════════════════
+async function submitPass() {
+  if (!document.getElementById('confirmCheck').checked) {
+    showToast('⚠️ Please tick the confirmation checkbox.'); return;
+  }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  const passId = 'GP-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*90000)+10000);
+
+  const req = {
+    passId,
+    studentName:   v('studentName'),
+    mid:           v('mid'),
+    room:          v('roomNumber'),
+    classSection:  v('classSection'),
+    parentContact: v('parentContact'),
+    passType:      selectedPassType,
+    reason:        v('reasonCategory'),
+    reasonDetail:  v('reasonDetail'),
+    wardenRemarks: v('wardenRemarks'),
+    submittedBy:   currentUser.name,
+    submittedByUid: currentUser.uid,
+    submittedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+    status:        'pending',
+  };
+  if (selectedPassType === 'gatepass') {
+    req.pickupTime  = v('pickupTime');
+    req.returnTime  = v('returnTime');
+    req.pickupPerson = v('pickupPerson');
+  } else {
+    req.outTime       = v('outTime');
+    req.outReturnTime = v('outReturnTime');
+    req.outDestination = v('outDestination');
+  }
+
+  try {
+    await db.collection('requests').add(req);
+    document.getElementById('passIdDisplay').textContent = passId;
+
+    const timeLabel = selectedPassType === 'gatepass'
+      ? `<div class="detail-row"><span class="dk">Departure</span><span class="dv">${fmt(req.pickupTime)}</span></div>
+         <div class="detail-row"><span class="dk">Return</span><span class="dv">${fmt(req.returnTime)}</span></div>
+         <div class="detail-row"><span class="dk">Picked By</span><span class="dv">${req.pickupPerson}</span></div>`
+      : `<div class="detail-row"><span class="dk">Out Time</span><span class="dv">${req.outTime}</span></div>
+         <div class="detail-row"><span class="dk">Return Time</span><span class="dv">${req.outReturnTime}</span></div>
+         <div class="detail-row"><span class="dk">Destination</span><span class="dv">${req.outDestination}</span></div>`;
+
+    document.getElementById('successDetails').innerHTML = `
+      <div class="detail-row"><span class="dk">Student</span><span class="dv">${req.studentName}</span></div>
+      <div class="detail-row"><span class="dk">MID</span><span class="dv">${req.mid}</span></div>
+      <div class="detail-row"><span class="dk">Room</span><span class="dv">${req.room}</span></div>
+      <div class="detail-row"><span class="dk">Pass Type</span><span class="dv">${selectedPassType === 'gatepass' ? '🏠 Gatepass' : '⏰ Outpass'}</span></div>
+      ${timeLabel}
+      <div class="detail-row"><span class="dk">Reason</span><span class="dv">${req.reason}</span></div>
+    `;
+    showPage('successPage');
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Failed to submit. Check your connection.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit Request 🚀';
+  }
+}
+
+// ════════════════════════════════════════════════════
+// 🛡 WARDEN DASHBOARD
+// ════════════════════════════════════════════════════
+function renderWardenDashboard() {
+  const all      = cachedRequests;
+  const pending  = all.filter(r => r.status === 'pending').length;
+  const approved = all.filter(r => r.status === 'approved').length;
+  const rejected = all.filter(r => r.status === 'rejected').length;
+  document.getElementById('statTotal').textContent    = all.length;
+  document.getElementById('statPending').textContent  = pending;
+  document.getElementById('statApproved').textContent = approved;
+  document.getElementById('statRejected').textContent = rejected;
+  renderWardenTable();
+}
+
+function renderWardenTable() {
+  const container = document.getElementById('wardenTableContainer');
+  const filtered = currentFilter === 'all' ? cachedRequests : cachedRequests.filter(r => r.status === currentFilter);
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="warden-empty"><div class="empty-icon">📋</div><p>${
+      cachedRequests.length === 0
+        ? 'No requests yet. Students will appear here once they submit a gatepass.'
+        : `No <strong>${currentFilter}</strong> requests found.`
+    }</p></div>`;
+    return;
+  }
+
+  const rows = filtered.map(req => {
+    const timing = req.passType === 'gatepass'
+      ? `Out: ${fmt(req.pickupTime)}<br>Return: ${fmt(req.returnTime)}`
+      : `Out: ${req.outTime} → Back: ${req.outReturnTime}<br>📍 ${req.outDestination}`;
+
+    const actionBtns = req.status === 'pending'
+      ? `<div class="action-btns">
+           <button class="btn-approve" onclick="updateRequestStatus('${req.id}','approved')">✓ Approve</button>
+           <button class="btn-reject"  onclick="updateRequestStatus('${req.id}','rejected')">✕ Reject</button>
+         </div>`
+      : `<span style="font-size:0.78rem;color:var(--text-muted);font-style:italic;">—</span>`;
+
+    return `<tr>
+      <td><div class="td-name">${req.studentName}</div><div class="td-mid">${req.mid} · Room ${req.room}</div></td>
+      <td><span class="pass-type-pill ${req.passType}">${req.passType === 'gatepass' ? '🏠 Gatepass' : '⏰ Outpass'}</span></td>
+      <td class="td-time">${timing}</td>
+      <td>${req.reason}</td>
+      <td><span class="status-pill ${req.status}">● ${cap(req.status)}</span></td>
+      <td>${actionBtns}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="warden-table">
+      <thead><tr>
+        <th>Student</th><th>Pass Type</th><th>Timing</th><th>Reason</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function updateRequestStatus(id, status) {
+  try {
+    await db.collection('requests').doc(id).update({ status, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(), reviewedBy: currentUser.uid });
+    showToast(status === 'approved' ? '✅ Request approved!' : '❌ Request rejected.', status === 'approved' ? 'success' : 'error');
+  } catch (err) {
+    showToast('❌ Failed to update. Try again.', 'error');
+  }
+}
+
+function filterTable(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.warden-filter-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderWardenTable();
+}
+
+// ════════════════════════════════════════════════════
+// 👑 SUPER ADMIN DASHBOARD
+// ════════════════════════════════════════════════════
+function renderSuperAdminDashboard() {
+  const all = cachedRequests;
+  document.getElementById('saTotal').textContent      = all.length;
+  document.getElementById('saGatepasses').textContent = all.filter(r => r.passType === 'gatepass').length;
+  document.getElementById('saOutpasses').textContent  = all.filter(r => r.passType === 'outpass').length;
+  document.getElementById('saApproved').textContent   = all.filter(r => r.status === 'approved').length;
+  document.getElementById('saPending').textContent    = all.filter(r => r.status === 'pending').length;
+  renderSATable();
+}
+
+function renderSATable() {
+  const container = document.getElementById('saTableContainer');
+  let filtered = cachedRequests;
+  if (saFilter === 'gatepass' || saFilter === 'outpass') filtered = cachedRequests.filter(r => r.passType === saFilter);
+  else if (['pending','approved','rejected'].includes(saFilter)) filtered = cachedRequests.filter(r => r.status === saFilter);
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="warden-empty"><div class="empty-icon">👑</div><p>No requests found.</p></div>`;
+    return;
+  }
+
+  const rows = filtered.map(req => {
+    const timing = req.passType === 'gatepass'
+      ? `${fmt(req.pickupTime)} → ${fmt(req.returnTime)}`
+      : `${req.outTime} → ${req.outReturnTime} · ${req.outDestination}`;
+
+    const override = req.status !== 'approved'
+      ? `<button class="btn-override" onclick="saOverride('${req.id}','approved')">✓ Force Approve</button>`
+      : `<button class="btn-override" onclick="saOverride('${req.id}','rejected')" style="color:#ef4444;border-color:rgba(239,68,68,0.35);background:rgba(239,68,68,0.06);">✕ Revoke</button>`;
+
+    return `<tr>
+      <td><div style="font-weight:600">${req.studentName}</div><div style="font-family:'DM Mono',monospace;font-size:0.78rem;color:#6b7280">${req.mid} · Room ${req.room}</div></td>
+      <td><span class="pass-type-pill ${req.passType}">${req.passType === 'gatepass' ? '🏠 Gatepass' : '⏰ Outpass'}</span></td>
+      <td style="font-size:0.8rem;color:#6b7280">${timing}</td>
+      <td>${req.reason}</td>
+      <td><span class="status-pill ${req.status}">● ${cap(req.status)}</span></td>
+      <td>${override}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="sa-table">
+      <thead><tr><th>Student</th><th>Type</th><th>Timing</th><th>Reason</th><th>Status</th><th>Override</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function saOverride(id, status) {
+  try {
+    await db.collection('requests').doc(id).update({ status, overriddenBy: currentUser.uid, overriddenAt: firebase.firestore.FieldValue.serverTimestamp() });
+    showToast(status === 'approved' ? '👑 Force approved!' : '👑 Revoked!', status === 'approved' ? 'success' : 'error');
+  } catch (err) {
+    showToast('❌ Override failed.', 'error');
+  }
+}
+
+function filterSATable(filter, el) {
+  saFilter = filter;
+  document.querySelectorAll('.sa-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderSATable();
+}
+
+async function clearAllRequests() {
+  if (!confirm('Delete ALL requests permanently from Firestore? This cannot be undone.')) return;
+  const snapshot = await db.collection('requests').get();
+  const batch = db.batch();
+  snapshot.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+  showToast('🗑 All requests deleted.', 'success');
+}
+
+// ════════════════════════════════════════════════════
+// 🔐 ROLE UPGRADE MODALS
+// ════════════════════════════════════════════════════
+function upgradeToWarden() {
+  document.getElementById('wardenModal').style.display = 'flex';
+  document.getElementById('wardenPasswordInput').value = '';
+  document.getElementById('wardenModalError').style.display = 'none';
+  setTimeout(() => document.getElementById('wardenPasswordInput').focus(), 100);
+}
+function closeWardenModal() { document.getElementById('wardenModal').style.display = 'none'; }
+
+async function confirmWardenPassword() {
+  if (document.getElementById('wardenPasswordInput').value === WARDEN_PASSWORD) {
+    closeWardenModal();
+    currentUser.role = 'warden';
+    // Persist role to Firestore so it survives page refresh
+    await setUserRole(currentUser.uid, 'warden');
+    showToast('✅ Warden access granted!', 'success');
+    enterApp();
+  } else {
+    document.getElementById('wardenModalError').style.display = 'block';
+    document.getElementById('wardenPasswordInput').style.borderColor = '#ef4444';
+    document.getElementById('wardenPasswordInput').value = '';
+    setTimeout(() => { document.getElementById('wardenPasswordInput').style.borderColor = ''; }, 1200);
+  }
+}
+
+function openSuperAdminModal() { document.getElementById('superAdminModal').style.display = 'flex'; document.getElementById('superAdminPasswordInput').value = ''; document.getElementById('saModalError').style.display = 'none'; setTimeout(() => document.getElementById('superAdminPasswordInput').focus(), 100); }
+function closeSuperAdminModal() { document.getElementById('superAdminModal').style.display = 'none'; }
+
+async function confirmSuperAdminPassword() {
+  if (document.getElementById('superAdminPasswordInput').value === SUPER_ADMIN_PASSWORD) {
+    closeSuperAdminModal();
+    currentUser.role = 'superadmin';
+    await setUserRole(currentUser.uid, 'superadmin');
+    showToast('👑 Super Admin access granted!', 'success');
+    enterApp();
+  } else {
+    document.getElementById('saModalError').style.display = 'block';
+    document.getElementById('superAdminPasswordInput').style.borderColor = '#ef4444';
+    document.getElementById('superAdminPasswordInput').value = '';
+    setTimeout(() => { document.getElementById('superAdminPasswordInput').style.borderColor = ''; }, 1200);
+  }
+}
+
+// ════════════════════════════════════════════════════
+// 🔄 SWITCH VIEW (Warden ↔ Student form)
+// ════════════════════════════════════════════════════
+function switchView() {
+  if (document.getElementById('switchViewBtn').textContent.includes('Student')) {
+    document.getElementById('switchViewBtn').textContent = '⇄ Warden Dashboard';
+    showPage('appPage'); goToStep(1, true);
+  } else {
+    document.getElementById('switchViewBtn').textContent = '⇄ Student View';
+    showPage('wardenPage');
+    if (!unsubRequests) startRequestsListener(() => renderWardenDashboard());
+    else renderWardenDashboard();
+  }
+}
+
+// ════════════════════════════════════════════════════
+// 🧭 NAVIGATION
+// ════════════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function goToStep(n, force=false) {
+  if (!force && n > currentStep && !validateStep(currentStep)) return;
+  currentStep = n;
+  document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+  document.getElementById(`step${n}`).classList.add('active');
+  for (let i = 1; i <= 3; i++) {
+    const s = document.getElementById(`s${i}`);
+    s.classList.remove('active','done');
+    if (i < n) s.classList.add('done');
+    else if (i === n) s.classList.add('active');
+    if (i < 3) document.getElementById(`l${i}`).classList.toggle('done', i < n);
+  }
+  if (n === 3) buildReviewSummary();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function newRequest() {
+  ['mid','studentName','roomNumber','parentContact','pickupPerson','outDestination','reasonDetail','wardenRemarks'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['classSection','reasonCategory'].forEach(id => { const el = document.getElementById(id); if (el) el.selectedIndex = 0; });
+  ['pickupTime','returnTime','outTime','outReturnTime'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('confirmCheck').checked = false;
+  document.querySelectorAll('.pass-type-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('gatepassSection').style.display = 'none';
+  document.getElementById('outpassSection').style.display  = 'none';
+  selectedPassType = '';
+  showPage('appPage');
+  goToStep(1, true);
+}
+
+function printPass() { window.print(); }
+
+// ════════════════════════════════════════════════════
+// ✅ FORM HELPERS
+// ════════════════════════════════════════════════════
+function selectPassType(el, type) {
+  document.querySelectorAll('.pass-type-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedPassType = type;
+  document.getElementById('gatepassSection').style.display = type === 'gatepass' ? 'block' : 'none';
+  document.getElementById('outpassSection').style.display  = type === 'outpass'  ? 'block' : 'none';
+}
+
+function validateStep(n) {
+  if (n === 1) {
+    const mid  = v('mid'), name = v('studentName'), room = v('roomNumber'), cls = v('classSection');
+    if (!mid || !name || !room || !cls) { highlight(['mid','studentName','roomNumber','classSection']); showToast('⚠️ Please fill in all required student details.'); return false; }
+  }
+  if (n === 2) {
+    if (!selectedPassType) { showToast('⚠️ Please select Gatepass or Outpass.'); return false; }
+    if (!v('reasonCategory')) { showToast('⚠️ Please select a reason.'); return false; }
+    if (selectedPassType === 'gatepass') {
+      const pickup = v('pickupTime'), ret = v('returnTime'), person = v('pickupPerson');
+      if (!pickup || !ret || !person) { showToast('⚠️ Please fill in all gatepass timing details.'); return false; }
+      if (new Date(ret) <= new Date(pickup)) { showToast('⚠️ Return time must be after departure time.'); return false; }
+    }
+    if (selectedPassType === 'outpass') {
+      const outT = v('outTime'), retT = v('outReturnTime'), dest = v('outDestination');
+      if (!outT || !retT || !dest) { showToast('⚠️ Please fill in all outpass details.'); return false; }
+      if (retT <= outT) { showToast('⚠️ Return time must be after out time.'); return false; }
+    }
+  }
+  return true;
+}
+
+function highlight(ids) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) { el.style.borderColor = 'var(--error)'; el.addEventListener('input', () => el.style.borderColor = '', { once: true }); }
+  });
+}
+
+function buildReviewSummary() {
+  const items = (fields) => fields.map(f =>
+    `<div class="summary-item${f.full?' full':''}">
+      <div class="s-label">${f.label}</div>
+      <div class="s-value">${f.value || '—'}</div>
+    </div>`).join('');
+
+  document.getElementById('summaryStudent').innerHTML = items([
+    { label: 'MID / Roll No.',  value: v('mid') },
+    { label: 'Student Name',    value: v('studentName') },
+    { label: 'Room',            value: v('roomNumber') },
+    { label: 'Class / Section', value: v('classSection') },
+    { label: 'Parent Contact',  value: v('parentContact') || 'Not provided' },
+  ]);
+
+  const passFields = [
+    { label: 'Pass Type', value: selectedPassType === 'gatepass' ? '🏠 Gatepass' : '⏰ Outpass' },
+    { label: 'Reason',    value: v('reasonCategory') },
+  ];
+  if (selectedPassType === 'gatepass') {
+    passFields.push({ label: 'Departure', value: fmt(v('pickupTime')) }, { label: 'Return', value: fmt(v('returnTime')) }, { label: 'Picked Up By', value: v('pickupPerson'), full: true });
+  } else {
+    passFields.push({ label: 'Out Time', value: v('outTime') }, { label: 'Return Time', value: v('outReturnTime') }, { label: 'Destination', value: v('outDestination'), full: true });
+  }
+  const detail = v('reasonDetail');
+  if (detail) passFields.push({ label: 'Additional Details', value: detail, full: true });
+  document.getElementById('summaryPass').innerHTML = items(passFields);
+}
+
+// ════════════════════════════════════════════════════
+// 🛠 UTILITY
+// ════════════════════════════════════════════════════
+function v(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+function fmt(dt) {
+  if (!dt) return '';
+  // Handle both datetime-local strings and Firestore Timestamps
+  const d = dt.toDate ? dt.toDate() : new Date(dt);
+  if (isNaN(d)) return dt;
+  return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+       + ' • ' + d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+}
+
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = msg; el.style.display = 'block'; }
+function clearError()   { document.getElementById('errorMsg').style.display = 'none'; }
+
+function showToast(msg, type='error') {
+  let toast = document.getElementById('toastMsg');
+  if (!toast) {
+    toast = document.createElement('div'); toast.id = 'toastMsg';
+    toast.style.cssText = `position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 22px;border-radius:10px;font-size:0.88rem;font-family:'DM Sans',sans-serif;font-weight:500;z-index:9999;opacity:0;transition:all 0.3s ease;max-width:90vw;text-align:center;pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,0.4);`;
+    document.body.appendChild(toast);
+  }
+  const isError = type === 'error';
+  toast.style.background = isError ? 'rgba(224,112,112,0.95)' : 'rgba(109,187,138,0.95)';
+  toast.style.color = '#fff';
+  toast.style.border = `1px solid ${isError ? 'rgba(224,112,112,0.5)' : 'rgba(109,187,138,0.5)'}`;
+  toast.textContent = msg;
+  toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(20px)'; }, 3200);
+}
+
+// Auth tab toggle
+function switchTab(tab, el) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active')); el.classList.add('active');
+  document.getElementById('loginForm').style.display   = tab === 'login'  ? 'block' : 'none';
+  document.getElementById('signupForm').style.display  = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('loginFooter').style.display = tab === 'login'  ? 'block' : 'none';
+  document.getElementById('signupFooter').style.display= tab === 'signup' ? 'block' : 'none';
+  clearError();
+}
+function switchTabByName(tab) { const tabs = document.querySelectorAll('.auth-tab'); switchTab(tab, tabs[tab === 'login' ? 0 : 1]); }
+
+// Prefill min datetime on load
+window.addEventListener('load', () => {
+  const now = new Date(); now.setMinutes(now.getMinutes() + 30);
+  const dt = now.toISOString().slice(0,16);
+  const pt = document.getElementById('pickupTime'); if (pt) pt.min = dt;
+});
+</script>
+
+<!-- ════════════════════════════════════════════════════
+     📋 FIRESTORE SECURITY RULES — paste into Firebase Console
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    match /users/{uid} {
+      allow read, write: if request.auth.uid == uid;
+      allow read: if role() in ['warden', 'superadmin'];
+    }
+
+    match /requests/{reqId} {
+      allow create: if request.auth != null;
+      allow read:   if request.auth != null;
+      allow update: if role() in ['warden', 'superadmin'];
+      allow delete: if role() == 'superadmin';
+    }
+  }
+}
+════════════════════════════════════════════════════ -->
+
+</body>
+</html>
