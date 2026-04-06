@@ -265,6 +265,86 @@
     .detail-row .dv { color: var(--text-main); font-weight: 500; }
     .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 100px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.5px; }
     .badge-pending { background: rgba(249,115,22,0.12); color: var(--gold); border: 1px solid rgba(249,115,22,0.3); }
+    .badge-approved { background: rgba(34,197,94,0.12); color: #16a34a; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-rejected { background: rgba(239,68,68,0.12); color: #dc2626; border: 1px solid rgba(239,68,68,0.3); }
+
+    /* ─── MY PASSES PAGE ─── */
+    #myPassesPage { flex-direction: column; padding-top: 64px; background: #fff; }
+    .my-passes-content { flex: 1; padding: 2.5rem 1.5rem; max-width: 800px; margin: 0 auto; width: 100%; }
+    .my-passes-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+    .my-passes-topbar h2 { font-family: 'Playfair Display', serif; font-size: 1.7rem; color: #1a1a1a; }
+    .my-passes-topbar p { color: var(--text-muted); font-size: 0.88rem; margin-top: 2px; }
+    .pass-card {
+      background: #fff;
+      border: 1px solid rgba(249,115,22,0.2);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .pass-card:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(0,0,0,0.1); }
+    .pass-card.approved { border-color: rgba(34,197,94,0.4); }
+    .pass-card.rejected { border-color: rgba(239,68,68,0.35); }
+    .pass-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .pass-card-id { font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--gold); background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.2); border-radius: 6px; padding: 3px 10px; }
+    .pass-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-top: 0.75rem; }
+    .pass-card-field .pf-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 2px; font-weight: 600; }
+    .pass-card-field .pf-value { font-size: 0.9rem; color: #1a1a1a; font-weight: 500; }
+    .approved-banner {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff;
+      border-radius: 10px;
+      padding: 0.9rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 1rem;
+      font-weight: 600;
+      font-size: 0.92rem;
+      animation: fadeUp 0.4s ease both;
+    }
+    .approved-banner .ab-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .approved-banner .ab-text { flex: 1; }
+    .approved-banner .ab-sub { font-size: 0.78rem; font-weight: 400; opacity: 0.85; margin-top: 2px; }
+    .rejected-banner {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: #fff;
+      border-radius: 10px;
+      padding: 0.9rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 1rem;
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .pending-banner {
+      background: rgba(249,115,22,0.08);
+      border: 1px dashed rgba(249,115,22,0.4);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--gold);
+      font-weight: 500;
+    }
+    .pass-print-btn { padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(249,115,22,0.3); background: transparent; color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .pass-print-btn:hover { background: rgba(249,115,22,0.08); }
+    .my-passes-empty { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+    .my-passes-empty .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .my-passes-empty p { font-size: 0.9rem; }
+    .student-nav-tabs { display: flex; gap: 6px; margin-bottom: 2rem; background: #f3f4f6; border-radius: 10px; padding: 4px; }
+    .student-nav-tab { flex: 1; padding: 9px; border: none; background: transparent; border-radius: 7px; color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.25s; text-align: center; }
+    .student-nav-tab.active { background: #fff; color: var(--gold); box-shadow: 0 1px 6px rgba(0,0,0,0.1); }
+    @media (max-width: 580px) {
+      .pass-card-grid { grid-template-columns: 1fr; }
+    }
 
     /* ─── ANIMATIONS ─── */
     @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
@@ -487,6 +567,7 @@
 </div>
 
 <!-- ════════════ APP PAGE (Multi-step form) ════════════ -->
+<!-- Student nav tabs (shown inside appPage and myPassesPage header area) -->
 <div class="page" id="appPage">
   <div class="app-content">
 
@@ -630,11 +711,6 @@
           <textarea id="reasonDetail" placeholder="Any additional information for the warden…"></textarea>
         </div>
 
-        <div class="form-group">
-          <label>Warden Remarks</label>
-          <textarea id="wardenRemarks" placeholder="Leave blank — warden fills this in"></textarea>
-        </div>
-
         <div class="step-nav">
           <button class="btn-secondary" onclick="goToStep(1)">← Back</button>
           <button class="btn-primary" style="width:auto;padding:12px 32px;" onclick="goToStep(3)">Review →</button>
@@ -665,6 +741,19 @@
     </div>
 
   </div>
+
+  <!-- ── MY PASSES SECTION (inside appPage, shown/hidden by tabs) ── -->
+  <div class="my-passes-content" id="myPassesSection" style="display:none;">
+    <div class="my-passes-topbar">
+      <div>
+        <h2>📋 My Passes</h2>
+        <p>Live status of all your submitted gatepass &amp; outpass requests</p>
+      </div>
+      <button class="btn-primary" style="width:auto;padding:10px 22px;font-size:0.85rem;" onclick="switchStudentTab('new')">+ New Request</button>
+    </div>
+    <div id="myPassesList"></div>
+  </div>
+
 </div>
 
 <!-- ════════════ SUCCESS PAGE ════════════ -->
@@ -679,6 +768,7 @@
     </div>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
       <button class="btn-secondary" onclick="printPass()">🖨 Print</button>
+      <button class="btn-secondary" onclick="viewMyPasses()">📋 View My Passes</button>
       <button class="btn-primary" style="width:auto;padding:12px 28px;" onclick="newRequest()">+ New Request</button>
     </div>
   </div>
@@ -938,6 +1028,7 @@ async function forgotPassword() {
 
 async function logout() {
   stopRequestsListener();
+  if (unsubStudentPasses) { unsubStudentPasses(); unsubStudentPasses = null; }
   await auth.signOut();
   // onAuthStateChanged will redirect to login
   document.getElementById('userChip').style.display     = 'none';
@@ -947,6 +1038,7 @@ async function logout() {
   document.getElementById('switchViewBtn').style.display = 'none';
   selectedPassType = '';
   currentStep = 1;
+  studentPasses = [];
 }
 
 function friendlyAuthError(code) {
@@ -990,7 +1082,10 @@ function enterApp() {
     showPage('wardenPage');
     startRequestsListener(() => renderWardenDashboard());
   } else {
+    // Student: start real-time listener for their own passes
+    startStudentPassesListener();
     showPage('appPage');
+    switchStudentTab('new');
     goToStep(1, true);
   }
 }
@@ -1018,6 +1113,132 @@ function startRequestsListener(onUpdate) {
 
 function stopRequestsListener() {
   if (unsubRequests) { unsubRequests(); unsubRequests = null; }
+}
+
+// ════════════════════════════════════════════════════
+// 📋 STUDENT — real-time listener for own passes
+// ════════════════════════════════════════════════════
+let unsubStudentPasses = null;
+let studentPasses = [];
+
+function startStudentPassesListener() {
+  if (unsubStudentPasses) { unsubStudentPasses(); unsubStudentPasses = null; }
+  if (!currentUser) return;
+  unsubStudentPasses = db.collection('requests')
+    .where('submittedByUid', '==', currentUser.uid)
+    .onSnapshot({ includeMetadataChanges: false }, snapshot => {
+      studentPasses = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.submittedAt && a.submittedAt.toMillis ? a.submittedAt.toMillis() : 0;
+          const tb = b.submittedAt && b.submittedAt.toMillis ? b.submittedAt.toMillis() : 0;
+          return tb - ta;
+        });
+      renderMyPasses();
+      // Show a notification toast if a pass status just changed to approved/rejected
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'modified') {
+          const d = change.doc.data();
+          if (d.status === 'approved') showToast('✅ Your pass has been APPROVED by the warden!', 'success');
+          else if (d.status === 'rejected') showToast('❌ Your pass has been rejected by the warden.', 'error');
+        }
+      });
+    }, err => console.error('Student passes listener error:', err));
+}
+
+function renderMyPasses() {
+  const container = document.getElementById('myPassesList');
+  if (!container) return;
+
+  if (studentPasses.length === 0) {
+    container.innerHTML = `
+      <div class="my-passes-empty">
+        <div class="empty-icon">📬</div>
+        <p>You haven't submitted any passes yet.<br>Click <strong>New Request</strong> above to get started.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = studentPasses.map(req => {
+    const statusColor = req.status === 'approved' ? '#16a34a' : req.status === 'rejected' ? '#dc2626' : 'var(--gold)';
+    const submittedDate = req.submittedAt && req.submittedAt.toDate
+      ? fmt(req.submittedAt)
+      : 'Just now';
+
+    const timingFields = req.passType === 'gatepass'
+      ? `<div class="pass-card-field"><div class="pf-label">Departure</div><div class="pf-value">${fmt(req.pickupTime)}</div></div>
+         <div class="pass-card-field"><div class="pf-label">Return</div><div class="pf-value">${fmt(req.returnTime)}</div></div>
+         <div class="pass-card-field"><div class="pf-label">Picked Up By</div><div class="pf-value">${req.pickupPerson || '—'}</div></div>`
+      : `<div class="pass-card-field"><div class="pf-label">Out Time</div><div class="pf-value">${req.outTime || '—'}</div></div>
+         <div class="pass-card-field"><div class="pf-label">Return Time</div><div class="pf-value">${req.outReturnTime || '—'}</div></div>
+         <div class="pass-card-field"><div class="pf-label">Destination</div><div class="pf-value">${req.outDestination || '—'}</div></div>`;
+
+    const statusBanner = req.status === 'approved'
+      ? `<div class="approved-banner">
+           <div class="ab-icon">✅</div>
+           <div class="ab-text">
+             Your pass has been <strong>APPROVED</strong> by the warden!
+             <div class="ab-sub">You are permitted to leave as per the approved timing. Show this screen at the gate.</div>
+           </div>
+         </div>`
+      : req.status === 'rejected'
+      ? `<div class="rejected-banner">
+           <span style="font-size:1.4rem">❌</span>
+           <div>Your pass has been <strong>REJECTED</strong> by the warden.</div>
+         </div>`
+      : `<div class="pending-banner">
+           <span style="font-size:1.2rem">⏳</span>
+           <div>Awaiting warden approval — you'll be notified here in real time.</div>
+         </div>`;
+
+    return `
+      <div class="pass-card ${req.status}">
+        <div class="pass-card-header">
+          <span class="pass-card-id">${req.passId || req.id}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="pass-type-pill ${req.passType}">${req.passType === 'gatepass' ? '🏠 Gatepass' : '⏰ Outpass'}</span>
+            <span class="status-pill ${req.status}">● ${cap(req.status)}</span>
+          </div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.75rem;">Submitted: ${submittedDate}</div>
+        <div class="pass-card-grid">
+          <div class="pass-card-field"><div class="pf-label">Student Name</div><div class="pf-value">${req.studentName}</div></div>
+          <div class="pass-card-field"><div class="pf-label">Room</div><div class="pf-value">${req.room}</div></div>
+          <div class="pass-card-field"><div class="pf-label">Reason</div><div class="pf-value">${req.reason}</div></div>
+          <div class="pass-card-field"><div class="pf-label">Class</div><div class="pf-value">${req.classSection}</div></div>
+          ${timingFields}
+        </div>
+        ${statusBanner}
+        ${req.status === 'approved' ? `<div style="margin-top:0.75rem;text-align:right;"><button class="pass-print-btn" onclick="window.print()">🖨 Print Pass</button></div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function switchStudentTab(tab) {
+  const formSection = document.getElementById('progressBar').parentElement;
+  // Build list of form steps + nav
+  const formItems = ['progressBar','step1','step2','step3'];
+  const mySection = document.getElementById('myPassesSection');
+  const tabNew    = document.getElementById('tabNewRequest');
+  const tabPasses = document.getElementById('tabMyPasses');
+
+  if (tab === 'new') {
+    formItems.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = ''; });
+    mySection.style.display = 'none';
+    tabNew.classList.add('active');
+    tabPasses.classList.remove('active');
+  } else {
+    formItems.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+    mySection.style.display = 'block';
+    tabNew.classList.remove('active');
+    tabPasses.classList.add('active');
+    renderMyPasses();
+  }
+}
+
+function viewMyPasses() {
+  showPage('appPage');
+  switchStudentTab('passes');
 }
 
 // ════════════════════════════════════════════════════
