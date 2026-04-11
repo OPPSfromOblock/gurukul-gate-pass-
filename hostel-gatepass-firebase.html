@@ -468,6 +468,28 @@
     .modal-box p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
     .modal-error { font-size: 0.8rem; color: var(--error); margin-top: 0.5rem; display: none; }
     .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+
+    /* ─── PRINT STYLES ─── */
+    @media print {
+      body { background: #fff !important; }
+      .site-header, .progress-bar, .student-nav-tabs, .step-nav, .btn-primary, .btn-secondary, 
+      .pass-print-btn, .loading-overlay, .my-passes-topbar, .warden-topbar, .sa-topbar,
+      .warden-stats, .sa-stats, .warden-filter-tabs, .sa-tabs, .warden-table-header, .sa-table-header,
+      .pass-card:not(.approved), .pending-banner, .rejected-banner, .form-step { display: none !important; }
+      
+      .page, .app-content, .my-passes-content { padding: 0 !important; margin: 0 !important; display: block !important; }
+      .pass-card.approved {
+        border: 2px solid #1a1a1a !important;
+        box-shadow: none !important;
+        transform: none !important;
+        margin: 2rem auto !important;
+        width: 100% !important;
+        max-width: 600px !important;
+        page-break-inside: avoid;
+      }
+      .pass-card-id { border: 1px solid #1a1a1a !important; color: #000 !important; }
+      .approved-banner { background: #f0fdf4 !important; color: #16a34a !important; border: 1px solid #16a34a !important; }
+    }
   </style>
 </head>
 <body>
@@ -490,6 +512,7 @@
     <span class="role-badge" id="roleBadge"></span>
     <button class="btn-upgrade"      id="upgradeBtn"    onclick="upgradeToWarden()">⬆ Upgrade to Warden</button>
     <button class="btn-switch-view"  id="switchViewBtn" onclick="switchView()">⇄ Switch View</button>
+    <button class="btn-secondary"    id="headerMyPasses" onclick="viewMyPasses()" style="display:none; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem;">📋 My Passes</button>
     <div class="user-chip" id="userChip">
       <div class="avatar" id="userAvatar">A</div>
       <span id="userNameDisplay">Admin</span>
@@ -570,6 +593,11 @@
 <!-- Student nav tabs (shown inside appPage and myPassesPage header area) -->
 <div class="page" id="appPage">
   <div class="app-content">
+
+    <div class="student-nav-tabs" id="studentNavTabs" style="display:none;">
+      <button class="student-nav-tab active" id="tabNewRequest" onclick="switchStudentTab('new')">✍️ New Request</button>
+      <button class="student-nav-tab"        id="tabMyPasses"   onclick="switchStudentTab('passes')">📋 My Passes</button>
+    </div>
 
     <div class="progress-bar" id="progressBar">
       <div class="step active" id="s1"><div class="step-bubble">1</div><span class="step-label">Student Info</span></div>
@@ -792,6 +820,10 @@
     <div class="warden-table-wrap">
       <div class="warden-table-header">
         <h3>All Requests <span id="liveIndicator" style="font-size:0.7rem;color:#22c55e;margin-left:8px;">● Live</span></h3>
+        <div class="input-icon-wrap" style="width:240px; margin-left: auto; margin-right: 15px;">
+          <span class="icon-left">🔍</span>
+          <input type="text" id="wardenSearch" placeholder="Search name or MID..." oninput="renderWardenTable()" style="padding: 8px 12px 8px 36px; font-size: 0.82rem; background: #fff;">
+        </div>
         <div class="warden-filter-tabs">
           <button class="warden-filter-tab active" onclick="filterTable('all',this)">All</button>
           <button class="warden-filter-tab" onclick="filterTable('pending',this)">Pending</button>
@@ -835,6 +867,10 @@
     <div class="sa-table-wrap">
       <div class="sa-table-header">
         <h3>All Requests <span style="font-size:0.7rem;color:#22c55e;margin-left:8px;">● Live</span></h3>
+        <div class="input-icon-wrap" style="width:240px; margin-left: auto;">
+          <span class="icon-left">🔍</span>
+          <input type="text" id="saSearch" placeholder="Search name or MID..." oninput="renderSATable()" style="padding: 8px 12px 8px 36px; font-size: 0.82rem; background: #fff;">
+        </div>
       </div>
       <div id="saTableContainer"></div>
     </div>
@@ -880,7 +916,7 @@
 // ── Passwords (stored only in JS, not Firestore)
 // Change these before deploying!
 const WARDEN_PASSWORD    = 'mithunisboujee';
-const SUPER_ADMIN_PASSWORD = 'researchinnovationsithebestcommitee';
+const SUPER_ADMIN_PASSWORD = 'researchinnovationsithebestcommittee';
 
 // ── Runtime state ──
 let currentUser    = null;   // Firebase user + role
@@ -1036,6 +1072,7 @@ async function logout() {
   document.getElementById('roleBadge').style.display    = 'none';
   document.getElementById('upgradeBtn').style.display   = 'none';
   document.getElementById('switchViewBtn').style.display = 'none';
+  document.getElementById('headerMyPasses').style.display = 'none';
   selectedPassType = '';
   currentStep = 1;
   studentPasses = [];
@@ -1074,6 +1111,7 @@ function enterApp() {
 
   document.getElementById('upgradeBtn').style.display    = currentUser.role === 'student'    ? 'block' : 'none';
   document.getElementById('switchViewBtn').style.display = currentUser.role === 'warden'     ? 'block' : 'none';
+  document.getElementById('headerMyPasses').style.display = currentUser.role === 'student'    ? 'block' : 'none';
 
   if (currentUser.role === 'superadmin') {
     showPage('superAdminPage');
@@ -1085,6 +1123,7 @@ function enterApp() {
     // Student: start real-time listener for their own passes
     startStudentPassesListener();
     showPage('appPage');
+    document.getElementById('studentNavTabs').style.display = 'flex';
     switchStudentTab('new');
     goToStep(1, true);
   }
@@ -1325,13 +1364,23 @@ function renderWardenDashboard() {
 
 function renderWardenTable() {
   const container = document.getElementById('wardenTableContainer');
-  const filtered = currentFilter === 'all' ? cachedRequests : cachedRequests.filter(r => r.status === currentFilter);
+  const query = v('wardenSearch').toLowerCase();
+  
+  let filtered = currentFilter === 'all' ? cachedRequests : cachedRequests.filter(r => r.status === currentFilter);
+  
+  if (query) {
+    filtered = filtered.filter(r => 
+      r.studentName.toLowerCase().includes(query) || 
+      (r.mid && r.mid.toLowerCase().includes(query)) ||
+      (r.passId && r.passId.toLowerCase().includes(query))
+    );
+  }
 
   if (filtered.length === 0) {
     container.innerHTML = `<div class="warden-empty"><div class="empty-icon">📋</div><p>${
       cachedRequests.length === 0
         ? 'No requests yet. Students will appear here once they submit a gatepass.'
-        : `No <strong>${currentFilter}</strong> requests found.`
+        : query ? 'No matching requests found.' : `No <strong>${currentFilter}</strong> requests found.`
     }</p></div>`;
     return;
   }
@@ -1398,12 +1447,22 @@ function renderSuperAdminDashboard() {
 
 function renderSATable() {
   const container = document.getElementById('saTableContainer');
+  const query = v('saSearch').toLowerCase();
+  
   let filtered = cachedRequests;
   if (saFilter === 'gatepass' || saFilter === 'outpass') filtered = cachedRequests.filter(r => r.passType === saFilter);
   else if (['pending','approved','rejected'].includes(saFilter)) filtered = cachedRequests.filter(r => r.status === saFilter);
 
+  if (query) {
+    filtered = filtered.filter(r => 
+      r.studentName.toLowerCase().includes(query) || 
+      (r.mid && r.mid.toLowerCase().includes(query)) ||
+      (r.passId && r.passId.toLowerCase().includes(query))
+    );
+  }
+
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="warden-empty"><div class="empty-icon">👑</div><p>No requests found.</p></div>`;
+    container.innerHTML = `<div class="warden-empty"><div class="empty-icon">👑</div><p>${query ? 'No matching requests found.' : 'No requests found.'}</p></div>`;
     return;
   }
 
