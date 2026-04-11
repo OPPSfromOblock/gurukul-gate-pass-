@@ -1097,11 +1097,13 @@ function friendlyAuthError(code) {
     'auth/email-already-in-use': 'An account with this email already exists.',
     'auth/weak-password':        'Password is too weak. Use at least 8 characters.',
     'auth/invalid-email':        'Invalid email address.',
+    'auth/operation-not-allowed': 'Google Sign-in is not enabled in Firebase Console.',
+    'auth/unauthorized-domain':  'This domain is not authorized. Try running via a local server (http) instead of file://',
     'auth/too-many-requests':    'Too many attempts. Please try again later.',
     'auth/popup-closed-by-user': 'Sign-in popup was closed.',
     'auth/network-request-failed': 'Network error. Check your connection.',
   };
-  return map[code] || 'Authentication error. Please try again.';
+  return (map[code] || 'Authentication error.') + ` (${code})`;
 }
 
 // ════════════════════════════════════════════════════
