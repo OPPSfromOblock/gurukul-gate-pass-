@@ -609,6 +609,18 @@
 
     <!-- Step 1 -->
     <div class="form-step active" id="step1">
+      <!-- DASHBOARD QUICK ACTION -->
+      <div class="card" id="dashboardQuickAction" style="background: rgba(249,115,22,0.06); border: 1px dashed var(--gold); margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-radius: 12px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-size:1.4rem;">📋</div>
+          <div>
+            <div style="font-weight:600; color:var(--text-main); font-size: 0.9rem;">My Pass History</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight: 300;">Check status of your approved and pending passes</div>
+          </div>
+        </div>
+        <button class="btn-secondary" onclick="viewMyPasses()" style="width:auto; padding: 6px 16px; font-size: 0.8rem; border-color: var(--gold); color: var(--gold);">View History →</button>
+      </div>
+
       <div class="section-title">
         <h2>Student Information</h2>
         <p>Enter the student's details to proceed with the gatepass request</p>
@@ -1254,24 +1266,30 @@ function renderMyPasses() {
 }
 
 function switchStudentTab(tab) {
-  const formSection = document.getElementById('progressBar').parentElement;
-  // Build list of form steps + nav
-  const formItems = ['progressBar','step1','step2','step3'];
+  const formItems = ['progressBar', 'step1', 'step2', 'step3'];
   const mySection = document.getElementById('myPassesSection');
   const tabNew    = document.getElementById('tabNewRequest');
   const tabPasses = document.getElementById('tabMyPasses');
 
   if (tab === 'new') {
-    formItems.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = ''; });
-    mySection.style.display = 'none';
-    tabNew.classList.add('active');
-    tabPasses.classList.remove('active');
+    formItems.forEach(id => { 
+      const el = document.getElementById(id); 
+      if(el) el.style.setProperty('display', '', 'important'); 
+    });
+    if(mySection) mySection.style.setProperty('display', 'none', 'important');
+    if(tabNew) tabNew.classList.add('active');
+    if(tabPasses) tabPasses.classList.remove('active');
   } else {
-    formItems.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
-    mySection.style.display = 'block';
-    tabNew.classList.remove('active');
-    tabPasses.classList.add('active');
-    renderMyPasses();
+    formItems.forEach(id => { 
+      const el = document.getElementById(id); 
+      if(el) el.style.setProperty('display', 'none', 'important'); 
+    });
+    if(mySection) {
+      mySection.style.setProperty('display', 'block', 'important');
+      renderMyPasses();
+    }
+    if(tabNew) tabNew.classList.remove('active');
+    if(tabPasses) tabPasses.classList.add('active');
   }
 }
 
