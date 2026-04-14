@@ -1,1 +1,0 @@
-# gurukul-gate-pass-
