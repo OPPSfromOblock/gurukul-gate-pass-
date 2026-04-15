@@ -410,6 +410,9 @@
     .btn-approve:hover { background: rgba(34,197,94,0.15); }
     .btn-reject { padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.4); background: rgba(239,68,68,0.06); color: #dc2626; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
     .btn-reject:hover { background: rgba(239,68,68,0.15); }
+    .btn-undo { padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(249,115,22,0.4); background: rgba(249,115,22,0.06); color: var(--gold); font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-undo:hover { background: rgba(249,115,22,0.15); }
+
     .warden-empty { text-align: center; padding: 3.5rem 2rem; color: var(--text-muted); }
     .warden-empty .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; }
     .warden-empty p { font-size: 0.9rem; }
@@ -628,7 +631,7 @@
       <div class="card">
         <div class="form-row">
           <div class="form-group">
-            <label>MID / Roll Number <span class="required-mark">*</span></label>
+            <label>MID <span class="required-mark">*</span></label>
             <input type="text" id="mid" placeholder="e.g. MID2024001" style="font-family:'DM Mono',monospace;letter-spacing:1px;" />
             <div class="field-hint">Unique student identifier</div>
           </div>
@@ -643,7 +646,7 @@
             <input type="text" id="roomNumber" placeholder="e.g. A-204" />
           </div>
           <div class="form-group">
-            <label>Class / Section <span class="required-mark">*</span></label>
+            <label>Class <span class="required-mark">*</span></label>
             <select id="classSection">
               <option value="">Select class</option>
               <option>5th Grade</option>
@@ -1121,7 +1124,7 @@ function enterApp() {
   badge.className = `role-badge ${currentUser.role}`;
   badge.textContent = currentUser.role === 'superadmin' ? '👑 Super Admin'
                     : currentUser.role === 'warden'     ? '🛡 Warden'
-                    : '🎓 Student';
+                    : '🙏 Parents';
 
   document.getElementById('upgradeBtn').style.display    = currentUser.role === 'student'    ? 'block' : 'none';
   document.getElementById('switchViewBtn').style.display = currentUser.role === 'warden'     ? 'block' : 'none';
@@ -1415,7 +1418,9 @@ function renderWardenTable() {
            <button class="btn-approve" onclick="updateRequestStatus('${req.id}','approved')">✓ Approve</button>
            <button class="btn-reject"  onclick="updateRequestStatus('${req.id}','rejected')">✕ Reject</button>
          </div>`
-      : `<span style="font-size:0.78rem;color:var(--text-muted);font-style:italic;">—</span>`;
+      : `<div class="action-btns">
+           <button class="btn-undo" onclick="updateRequestStatus('${req.id}','pending')">↩ Undo Action</button>
+         </div>`;
 
     return `<tr>
       <td><div class="td-name">${req.studentName}</div><div class="td-mid">${req.mid} · Room ${req.room}</div></td>
@@ -1438,9 +1443,17 @@ function renderWardenTable() {
 
 async function updateRequestStatus(id, status) {
   try {
-    await db.collection('requests').doc(id).update({ status, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(), reviewedBy: currentUser.uid });
-    showToast(status === 'approved' ? '✅ Request approved!' : '❌ Request rejected.', status === 'approved' ? 'success' : 'error');
+    await db.collection('requests').doc(id).update({ 
+      status, 
+      reviewedAt: firebase.firestore.FieldValue.serverTimestamp(), 
+      reviewedBy: currentUser.uid || 'unknown' 
+    });
+    
+    if (status === 'approved') showToast('✅ Request approved!', 'success');
+    else if (status === 'rejected') showToast('❌ Request rejected.', 'error');
+    else if (status === 'pending') showToast('↩️ Decision undone. Pending again.', 'success');
   } catch (err) {
+    console.error(err);
     showToast('❌ Failed to update. Try again.', 'error');
   }
 }
@@ -1688,7 +1701,7 @@ function buildReviewSummary() {
     { label: 'MID / Roll No.',  value: v('mid') },
     { label: 'Student Name',    value: v('studentName') },
     { label: 'Room',            value: v('roomNumber') },
-    { label: 'Class / Section', value: v('classSection') },
+    { label: 'Class ', value: v('classSection') },
     { label: 'Parent Contact',  value: v('parentContact') || 'Not provided' },
   ]);
 
